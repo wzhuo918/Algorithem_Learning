@@ -78,7 +78,7 @@ public class DynamicProgramming {
 				maxnumber = coinValue[i] / coinValue[i + 1] + 3;
 			}
 		}
-		System.out.println("maxnumber" + maxnumber);
+		//System.out.println("maxnumber" + maxnumber);
 		// 保存每一个面值找零所需的最小硬币数，0号单元舍弃不用，所以要多加1
 		int[][] coinsUsed = new int[money + 1][maxnumber];
 
