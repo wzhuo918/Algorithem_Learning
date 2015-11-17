@@ -34,6 +34,13 @@ public class binpacking {
             }  
         }  
           
+        for(int i=0;i<=pg.length;i++){  
+            for(int j=0;j<=packageWheight;j++){  
+            	System.out.print("  "+bestValues[i][j]);  
+            }
+            System.out.println();
+            }
+        
         System.out.print(""+bestValues[pg.length][packageWheight]);  
         }  
     }  
