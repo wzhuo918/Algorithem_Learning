@@ -68,14 +68,14 @@ public class DynamicProgramming {
 	public static void main(String[] args) {
 
 		// 硬币面值预先已经按降序排列
-		int[] coinValue = new int[] { 25, 21, 10, 5, 1 };
+		int[] coinValue = new int[] { 100, 50, 10, 5, 1 };
 		// 需要找零的面值
-		int money = 63;
+		int money = 984;
 		// 求存放每个币值所需要的最大数组数目
 		int maxnumber = 0;
 		for (int i = 0; i < coinValue.length - 1; i++) {
-			if (maxnumber < coinValue[i] / coinValue[i + 1] + 3) {
-				maxnumber = coinValue[i] / coinValue[i + 1] + 3;
+			if (maxnumber < coinValue[i] / coinValue[i + 1] + 300) {
+				maxnumber = coinValue[i] / coinValue[i + 1] + 300;
 			}
 		}
 		//System.out.println("maxnumber" + maxnumber);
