@@ -22,30 +22,28 @@ import java.util.List;
 import java.util.Map;
 
 public class MarkovDecisionProcess {
-	public int PNUM = 200;
-	public Map<Integer, Integer> counter = new HashMap<Integer, Integer>();
-	// 二维数组，第一行
-	public int[][] Sampletable = new int[3][PNUM];
-	public int[] ReduceLoad = new int[4];
-	public int[] ReduceLoad_Hash = new int[4];
+	public int MicrParNum = 200;
+	public int ReduceNum = 4;
+	
+	public Map<Integer, Integer> micrParMes = new HashMap<Integer, Integer>();   //用于存放每个Micro的信息
+	// 三行采样数组，第一行为Mic的编号，第二行为负载量，第三行标识是否被分配完
+	public int[][] Sampletable = new int[3][MicrParNum];
 
-	public int TOTALNUM = 100000;
-	public int Samplenum = 0;
-	public int AssPnum = 0;
-	public int unAssPnum = 0;
-	public int npAssPnum = 0;
-	public int npunAssPnum = 0;
-	public int npro = 0;
+	public int TOTALNUM = 1000000;
+	public int AssPnum = 0;      //已分配分区的个数
+	public int unAssPnum = 0;    //未分配分区的个数
+	
+	public int AssProweight = 0;   //已采用且分配的负载量   
+	public int unAssProweight = 0;  //已采用且未分配的负载量
 
-	public int UNAssiPNUM = -1;
 
-	public int bbeta = 0;
-	public int abeta = 0;
+	public int curSampleNum = 0;     //当前分配时分区的统计量
+	public int lastSampleNum = 0;    //上轮分配时分区的统计量
 
-	boolean oncetime = true; // 一次分配完成的实验
+	boolean oncetime = true;         // 一次分配完成的实验
 
-	public List<Integer> AssignedPar = new LinkedList<Integer>();
-	public List<Integer> unAssignedPar = new LinkedList<Integer>();
+	public List<Integer> AssignedPar = new LinkedList<Integer>();      //已分配分区的链表
+	public List<Integer> unAssignedPar = new LinkedList<Integer>();    //未分配分区的链表
 
 	/**
 	 * Read and write a file
@@ -61,16 +59,15 @@ public class MarkovDecisionProcess {
 		int input = 0;
 
 		/** init MDP.state and MDP.action */
-
 		for (int i = 0; i < Sampletable[2].length; i++) {
 			Sampletable[2][i] = -1;
 		}
-		for (int i = 0; i < PNUM; i++) {
+		for (int i = 0; i < MicrParNum; i++) {
 			unAssignedPar.add(i);
-
+			unAssPnum++;
 		}
-		System.out.println("unAssignedPar = " + unAssignedPar);
-
+		//System.out.println("unAssignedPar = " + unAssignedPar);
+		
 		try {
 			String br;
 			reader = new BufferedReader(new FileReader(file));
@@ -78,100 +75,84 @@ public class MarkovDecisionProcess {
 
 				input = Integer.parseInt(br);
 
-				int hashcodenum = input % PNUM;
+				int microHashCode = input % MicrParNum;
 
-				int hadoophashnum = input % 4;
-
-				if (hadoophashnum == 0) {
-					ReduceLoad_Hash[0]++;
-				}
-
-				if (hadoophashnum == 1) {
-					ReduceLoad_Hash[1]++;
-				}
-
-				if (hadoophashnum == 2) {
-					ReduceLoad_Hash[2]++;
-				}
-
-				if (hadoophashnum == 3) {
-					ReduceLoad_Hash[3]++;
-				}
-
-				if (counter.containsKey(hashcodenum)) {
-					int tempvalue = counter.get(hashcodenum);
-					counter.put(hashcodenum, tempvalue + 1);
-					Sampletable[1][hashcodenum] = tempvalue + 1;
+				if (micrParMes.containsKey(microHashCode)) {
+					int tempvalue = micrParMes.get(microHashCode);
+					micrParMes.put(microHashCode, tempvalue + 1);
+					Sampletable[1][microHashCode] = tempvalue + 1;
 				} else {
-					counter.put(hashcodenum, 1);
-					Sampletable[0][hashcodenum] = hashcodenum;
-					Sampletable[1][hashcodenum] = 1;
+					micrParMes.put(microHashCode, 1);
+					Sampletable[0][microHashCode] = microHashCode;
+					Sampletable[1][microHashCode] = 1;
 				}
 
-				Samplenum++;
+				curSampleNum++;
 
 				/**
 				 * the moment to decide to mdp samplenum = 10%TOTALNUM, begin
 				 * MDP
 				 */
-				bbeta = Samplenum;
-
-				if ((Samplenum > Math.round((double) (TOTALNUM * 0.3)))
-						&& ((bbeta - abeta) > Math
-								.round((double) (TOTALNUM * 0.1)))
-						&& unAssignedPar.size() > 0) {
+				
+				if ((curSampleNum > Math.round((double) (TOTALNUM * 0.2)))
+						&& ((curSampleNum - lastSampleNum) > Math.round((double) (TOTALNUM * 0.3)))
+						&& unAssignedPar.size() > 0 && (curSampleNum != TOTALNUM)) {
 					// System.out.println("Samplenum = " + Samplenum);
-					abeta = Samplenum;
+					lastSampleNum = curSampleNum;
 					oncetime = false;
 					mdp();
 				} else {
-					if ((unAssignedPar.size() > 0) && (bbeta == TOTALNUM)) {
-						mdp();
-					}
+//					if ((unAssignedPar.size() > 0) && (curSampleNum == TOTALNUM)) {
+//						mdp();
+//					}
 
 				}
 			}
 
-			System.out.println("Samplenum = " + Samplenum);
-
+			//System.out.println("curSampleNum=" + curSampleNum);
+			
+			
+			/**
+			 * 将结果写入文件夹中
+			 */			
 			// 按照hash值写入文件
-			String outstring = String.valueOf(counter);
+			String outstring = String.valueOf(micrParMes);
 
 			outstring = outstring.substring(1, outstring.length() - 1);
 
 			String[] outar = outstring.split(",");
-			System.out.println("outstring = " + outstring);
+			//System.out.println("outstring = " + outstring);
 
-			// FileWriter writer = new
-			// FileWriter("/home/wzhuo/example/mdp/out.txt");
-			FileWriter writer = new FileWriter("D:/out.txt");
+			// FileWriter writer = new FileWriter("/home/wzhuo/example/mdp/out.txt");
+			FileWriter writer = new FileWriter("D:/workspace/out.txt");
 			BufferedWriter bw = new BufferedWriter(writer);
 
 			for (int i = 0; i < outar.length; i++) {
 				if (i == 0) {
 					// System.out.println("outar[ "+i+"]=" + outar[i]);
 					bw.write(outar[i] + '\r');
-
 				} else {
 					// System.out.println("outar["+i+"]=" + outar[i]);
 					outar[i] = outar[i].substring(1, outar[i].length());
 					bw.write(outar[i] + '\r');
 				}
 			}
+			
 			bw.close();
-
+			
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
 
+	
+	
 	/**
 	 * MDP()
 	 */
 	private void mdp() {
-		// TODO Auto-generated method stub
-		/** sort samplingTable descending */
+		/** 按照负载量从大到小进行排序  */
 		for (int i = 0; i < Sampletable[1].length; i++) {
 			int maxid = Sampletable[0][i];
 			int maxnum = Sampletable[1][i];
@@ -200,15 +181,54 @@ public class MarkovDecisionProcess {
 			}
 		}
 		// output matrix[3][]
-		for (int i = 0; i < Sampletable.length; i++) {
+		for (int i = 0; i < 3; i++) {
 			for (int j = 0; j < Sampletable[1].length; j++) {
-				// System.out.println("Sampletable[" + i + "][" + j + "]=" +
-				// Sampletable[i][j]);
-				System.out.print(Sampletable[i][j]);
-				System.out.print(' ');
+				System.out.print("  "+Sampletable[i][j] );
 			}
-			System.out.println(' ');
+			System.out.println("");
 		}
+		
+		
+		/**
+		 * 动态规划算法
+		 */
+		int eachAssiNum = 0;
+		int puweight = 0;
+		
+		for(int i=0; i<Sampletable[1].length; i++){
+			if(Sampletable[2][i] == -1){
+				puweight +=Sampletable[1][i];
+			}
+		}
+		
+		
+		System.out.println("unAssPnum="+unAssPnum);
+		double[] weight  = new double[unAssPnum];
+		int assweight = 0;
+		for(int i=0; i<Sampletable[1].length; i++){
+			if(Sampletable[2][i] == -1){
+			eachAssiNum++;
+			assweight += Sampletable[1][i];
+			System.out.print("   eachAssiNum=" +eachAssiNum + "   assweight=" + assweight);
+			weight[i]=(double)((assweight/puweight) - (eachAssiNum/unAssPnum));
+			System.out.print("  assweight/puweight= " +assweight/puweight);
+			System.out.print("  eachAssiNum/unAssPnum= " +eachAssiNum/unAssPnum);
+			System.out.print("  weight[" +i+ "]"+weight[i]);
+			}
+		}
+		
+		System.out.println("");
+		int maxnum = 0;
+		for(int i=0; i<weight.length-1;i++){
+			if(weight[i] < weight[i+1]){
+				maxnum++;
+				unAssPnum--;
+			}
+		}
+		System.out.println("maxnum="+ maxnum);
+		System.out.println("unAssPnum="+ unAssPnum);
+		System.out.println("!!!!!!!!!!");
+		
 
 	}
 
@@ -217,7 +237,7 @@ public class MarkovDecisionProcess {
 
 		MarkovDecisionProcess mpd = new MarkovDecisionProcess();
 		// mpd.readFileByLines("/home/wzhuo/example/mdp/zipf7.txt");
-		mpd.readFileByLines("D:/zipf7.txt");
+		mpd.readFileByLines("D:/workspace/zipf7.txt");
 
 	}
 
