@@ -80,7 +80,13 @@ public class MarkovDecisionProcess {
 				if (micrParMes.containsKey(microHashCode)) {
 					int tempvalue = micrParMes.get(microHashCode);
 					micrParMes.put(microHashCode, tempvalue + 1);
-					Sampletable[1][microHashCode] = tempvalue + 1;
+					
+					for(int i=0; i<Sampletable[1].length; i++){
+						if(Sampletable[0][i] == microHashCode){
+							Sampletable[1][i] = tempvalue + 1;
+						}
+					}
+					
 				} else {
 					micrParMes.put(microHashCode, 1);
 					Sampletable[0][microHashCode] = microHashCode;
@@ -154,36 +160,36 @@ public class MarkovDecisionProcess {
 	private void mdp() {
 		/** 按照负载量从大到小进行排序  */
 		for (int i = 0; i < Sampletable[1].length; i++) {
-			int maxid = Sampletable[0][i];
-			int maxnum = Sampletable[1][i];
-			int maxdid = 0;
+			int id = Sampletable[0][i];
+			int idval = Sampletable[1][i];
+			
+			int maxpid = id;
+			int maxnum = idval;
 
-			for (int j = i + 1; j < Sampletable[1].length; j++) {
+			for (int j = i ; j < Sampletable[1].length; j++) {
 				if (maxnum < Sampletable[1][j]) {
-					maxid = Sampletable[0][j];
+					maxpid = j;
 					maxnum = Sampletable[1][j];
-					maxdid = j;
 				}
 			}
+			
+			if (idval < maxnum) {
+				
+				int tempid =  Sampletable[0][maxpid];
+				int tempval =  Sampletable[1][maxpid];
+				
+				Sampletable[0][maxpid] = id;
+				Sampletable[1][maxpid] = idval;
 
-			int tempval = 0;
+				Sampletable[0][i] = tempid;
+				Sampletable[1][i] = tempval;
 
-			if (maxid != Sampletable[0][i]) {
-				tempval = Sampletable[1][i];
-				Sampletable[0][maxdid] = Sampletable[0][i];
-				Sampletable[1][maxdid] = tempval;
-
-				Sampletable[0][i] = maxid;
-				Sampletable[1][i] = maxnum;
-
-			} else {
-				continue;
-			}
+			} 
 		}
 		// output matrix[3][]
 		for (int i = 0; i < 3; i++) {
 			for (int j = 0; j < Sampletable[1].length; j++) {
-				System.out.print("  "+Sampletable[i][j] );
+				System.out.print("  "+ Sampletable[i][j] );
 			}
 			System.out.println("");
 		}
@@ -202,7 +208,7 @@ public class MarkovDecisionProcess {
 		}
 		
 		
-		System.out.println("unAssPnum="+unAssPnum);
+		//System.out.println("unAssPnum="+unAssPnum);
 		double[] weight  = new double[unAssPnum];
 		int assweight = 0;
 		for(int i=0; i<Sampletable[1].length; i++){
