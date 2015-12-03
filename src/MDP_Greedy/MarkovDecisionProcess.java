@@ -1,4 +1,4 @@
-package MDP_DyProgramming;
+package MDP_Greedy;
 
 /**
  * 本程序是使用马尔科夫决策过程来解决多轮分区的问题
@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 public class MarkovDecisionProcess {
-	public int MicrParNum = 200;
+	public int MicrParNum = 1000;
 	public int ReduceNum = 4;
 	
 	public Map<Integer, Integer> micrParMes = new HashMap<Integer, Integer>();   //用于存放每个Micro的信息
@@ -30,8 +30,6 @@ public class MarkovDecisionProcess {
 	public int[][] Sampletable = new int[3][MicrParNum];
 
 	public int TOTALNUM = 1000000;
-	public int AssPnum = 0;      //已分配分区的个数
-	public int unAssPnum = 0;    //未分配分区的个数
 	
 	public int AssProweight = 0;   //已采用且分配的负载量   
 	public int unAssProweight = 0;  //已采用且未分配的负载量
@@ -40,8 +38,8 @@ public class MarkovDecisionProcess {
 	public int curSampleNum = 0;     //当前分配时分区的统计量
 	public int lastSampleNum = 0;    //上轮分配时分区的统计量
 
-	boolean oncetime = true;         // 一次分配完成的实验
-
+    int unAssignedParnum = 0;
+	
 	public List<Integer> AssignedPar = new LinkedList<Integer>();      //已分配分区的链表
 	public List<Integer> unAssignedPar = new LinkedList<Integer>();    //未分配分区的链表
 
@@ -64,7 +62,7 @@ public class MarkovDecisionProcess {
 		}
 		for (int i = 0; i < MicrParNum; i++) {
 			unAssignedPar.add(i);
-			unAssPnum++;
+			unAssignedParnum++;
 		}
 		//System.out.println("unAssignedPar = " + unAssignedPar);
 		
@@ -100,17 +98,30 @@ public class MarkovDecisionProcess {
 				 * MDP
 				 */
 				
-				if ((curSampleNum > Math.round((double) (TOTALNUM * 0.2)))
-						&& ((curSampleNum - lastSampleNum) > Math.round((double) (TOTALNUM * 0.3)))
-						&& unAssignedPar.size() > 0 && (curSampleNum != TOTALNUM)) {
-					// System.out.println("Samplenum = " + Samplenum);
+				if ((curSampleNum > Math.round((double) (TOTALNUM * 0.3)))&&
+						(curSampleNum < Math.round((double) (TOTALNUM * 0.95)))
+						&& ((curSampleNum - lastSampleNum) > Math.round((double) (TOTALNUM * 0.1)))
+						&& unAssignedParnum > 0 && (curSampleNum != TOTALNUM)) {
+					
+					DecimalFormat df = new DecimalFormat("#.####");
+
+					System.out.println("rate = " + Double.parseDouble(df.format((double)curSampleNum/(double)TOTALNUM)));
 					lastSampleNum = curSampleNum;
-					oncetime = false;
 					mdp();
 				} else {
-//					if ((unAssignedPar.size() > 0) && (curSampleNum == TOTALNUM)) {
-//						mdp();
-//					}
+					
+					if ((unAssignedParnum > 0) && (curSampleNum >= Math.round((double) (TOTALNUM * 0.95)))) {
+						
+						System.out.println("last unAssignedParnum=" + unAssignedParnum);
+						
+						for(int i=0; i<Sampletable[1].length; i++){
+							if(Sampletable[2][i] == -1){
+								unAssignedParnum--;
+								Sampletable[2][i]=1;
+							}
+						}
+						System.out.println("All has done!!");
+					}
 
 				}
 			}
@@ -196,48 +207,62 @@ public class MarkovDecisionProcess {
 		
 		
 		/**
-		 * 动态规划算法
+		 * 贪心算法
 		 */
 		int eachAssiNum = 0;
 		int puweight = 0;
+		int unAssiNum = 0;
 		
+		//统计所有未分配分区的总负载量
 		for(int i=0; i<Sampletable[1].length; i++){
 			if(Sampletable[2][i] == -1){
 				puweight +=Sampletable[1][i];
+				unAssiNum++;
 			}
 		}
 		
-		
 		//System.out.println("unAssPnum="+unAssPnum);
-		double[] weight  = new double[unAssPnum];
+		double[] weight  = new double[unAssiNum];
 		int assweight = 0;
+
 		for(int i=0; i<Sampletable[1].length; i++){
 			if(Sampletable[2][i] == -1){
 			eachAssiNum++;
 			assweight += Sampletable[1][i];
-			System.out.print("   eachAssiNum=" +eachAssiNum + "   assweight=" + assweight);
-			weight[i]=(double)((assweight/puweight) - (eachAssiNum/unAssPnum));
-			System.out.print("  assweight/puweight= " +assweight/puweight);
-			System.out.print("  eachAssiNum/unAssPnum= " +eachAssiNum/unAssPnum);
-			System.out.print("  weight[" +i+ "]"+weight[i]);
+			DecimalFormat df = new DecimalFormat("#.####");
+
+			double ap = (double)assweight/(double)puweight;
+			double eu = (double)eachAssiNum/(double)(unAssiNum); 
+			weight[eachAssiNum-1] = Double.parseDouble(df.format(ap -eu));
+			//System.out.print("  assweight/puweight= " + ap);
+			//System.out.print("  eachAssiNum/unAssPnum= " + eu);
+			System.out.print("  weight[" + (eachAssiNum-1)+ "]="+ weight[eachAssiNum-1]);
 			}
 		}
 		
 		System.out.println("");
-		int maxnum = 0;
-		for(int i=0; i<weight.length-1;i++){
-			if(weight[i] < weight[i+1]){
-				maxnum++;
-				unAssPnum--;
+		double maxnum = 0;
+		int maxid = 0;
+		for(int i=0; i<weight.length;i++){
+			if(maxnum<weight[i]){
+				maxnum = weight[i];
+				maxid = i;
 			}
 		}
-		System.out.println("maxnum="+ maxnum);
-		System.out.println("unAssPnum="+ unAssPnum);
-		System.out.println("!!!!!!!!!!");
+		System.out.println("maxnum="+ maxid);
+		for(int i=0; i<Sampletable[1].length; i++){
+			if(maxid >0 && Sampletable[2][i]==-1){
+				unAssignedParnum--;
+				Sampletable[2][i]=1;
+				maxid--;
+			}
+		}
 		
-
+		//System.out.println("unAssPnum="+ unAssPnum);
+		System.out.println("!!!!!!!!!!");
 	}
 
+	
 	public static void main(String[] args) throws IOException {
 		// TODO Auto-generated method stub
 
