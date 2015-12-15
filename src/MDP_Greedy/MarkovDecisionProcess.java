@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 public class MarkovDecisionProcess {
-	public int MicrParNum = 1000;
+	public int MicrParNum = 100;
 	public int ReduceNum = 4;
 	
 	public Map<Integer, Integer> micrParMes = new HashMap<Integer, Integer>();   //用于存放每个Micro的信息
@@ -98,34 +98,45 @@ public class MarkovDecisionProcess {
 				 * MDP
 				 */
 				
-				if ((curSampleNum > Math.round((double) (TOTALNUM * 0.3)))&&
+				if ((curSampleNum > Math.round((double) (TOTALNUM * 0.1)))&&
 						(curSampleNum < Math.round((double) (TOTALNUM * 0.95)))
 						&& ((curSampleNum - lastSampleNum) > Math.round((double) (TOTALNUM * 0.1)))
 						&& unAssignedParnum > 0 && (curSampleNum != TOTALNUM)) {
 					
 					DecimalFormat df = new DecimalFormat("#.####");
 
-					System.out.println("rate = " + Double.parseDouble(df.format((double)curSampleNum/(double)TOTALNUM)));
+					//System.out.println("rate = " + Double.parseDouble(df.format((double)curSampleNum/(double)TOTALNUM)));
 					lastSampleNum = curSampleNum;
 					mdp();
+					
+					
+					for(int i=0; i<Sampletable[1].length; i++){
+						if(Sampletable[2][i] == 1){
+							//System.out.print(" !! "+Sampletable[0][i]);
+						}
+					}
+					
+					//System.out.println();
+					
 				} else {
 					
 					if ((unAssignedParnum > 0) && (curSampleNum >= Math.round((double) (TOTALNUM * 0.95)))) {
 						
-						System.out.println("last unAssignedParnum=" + unAssignedParnum);
+						//System.out.println("last unAssignedParnum=" + unAssignedParnum);
 						
 						for(int i=0; i<Sampletable[1].length; i++){
 							if(Sampletable[2][i] == -1){
 								unAssignedParnum--;
 								Sampletable[2][i]=1;
+								System.out.println("  "+Sampletable[0][i]+ "  "+Sampletable[0][i]);
 							}
 						}
-						System.out.println("All has done!!");
-					}
 
+						
+					}
 				}
 			}
-
+			
 			//System.out.println("curSampleNum=" + curSampleNum);
 			
 			
@@ -171,6 +182,9 @@ public class MarkovDecisionProcess {
 	private void mdp() {
 		/** 按照负载量从大到小进行排序  */
 		for (int i = 0; i < Sampletable[1].length; i++) {
+			
+			if(Sampletable[2][i] ==-1){
+			
 			int id = Sampletable[0][i];
 			int idval = Sampletable[1][i];
 			
@@ -194,16 +208,16 @@ public class MarkovDecisionProcess {
 
 				Sampletable[0][i] = tempid;
 				Sampletable[1][i] = tempval;
-
+			}
 			} 
 		}
 		// output matrix[3][]
-		for (int i = 0; i < 3; i++) {
-			for (int j = 0; j < Sampletable[1].length; j++) {
-				System.out.print("  "+ Sampletable[i][j] );
-			}
-			System.out.println("");
-		}
+//		for (int i = 0; i < 3; i++) {
+//			for (int j = 0; j < Sampletable[1].length; j++) {
+//				//System.out.print("  "+ Sampletable[i][j] );
+//			}
+//			//System.out.println("");
+//		}
 		
 		
 		/**
@@ -231,16 +245,22 @@ public class MarkovDecisionProcess {
 			assweight += Sampletable[1][i];
 			DecimalFormat df = new DecimalFormat("#.####");
 
-			double ap = (double)assweight/(double)puweight;
-			double eu = (double)eachAssiNum/(double)(unAssiNum); 
-			weight[eachAssiNum-1] = Double.parseDouble(df.format(ap -eu));
+			//相减的方法
+//			double ap = (double)assweight/(double)puweight;
+//			double eu = (double)eachAssiNum/(double)(unAssiNum); 
+//			weight[eachAssiNum-1] = Double.parseDouble(df.format(ap -eu));
+			
+			double ap = (double)assweight/(double)TOTALNUM;
+			double eu = (double)(MicrParNum-i)/(double)(MicrParNum); 
+			weight[eachAssiNum-1] = Double.parseDouble(df.format(ap * eu));
+			
 			//System.out.print("  assweight/puweight= " + ap);
 			//System.out.print("  eachAssiNum/unAssPnum= " + eu);
-			System.out.print("  weight[" + (eachAssiNum-1)+ "]="+ weight[eachAssiNum-1]);
+			//System.out.print("  weight[" + (eachAssiNum-1)+ "]="+ weight[eachAssiNum-1]);
 			}
 		}
 		
-		System.out.println("");
+		//System.out.println("");
 		double maxnum = 0;
 		int maxid = 0;
 		for(int i=0; i<weight.length;i++){
@@ -249,17 +269,20 @@ public class MarkovDecisionProcess {
 				maxid = i;
 			}
 		}
+		
 		System.out.println("maxnum="+ maxid);
 		for(int i=0; i<Sampletable[1].length; i++){
-			if(maxid >0 && Sampletable[2][i]==-1){
+			if((maxid >0) && (Sampletable[2][i]==-1)){
+				System.out.print(" "+ Sampletable[0][i]);
 				unAssignedParnum--;
 				Sampletable[2][i]=1;
 				maxid--;
 			}
 		}
-		
+		System.out.println();
+		//System.out.println("unAssignedParnum="+unAssignedParnum);
 		//System.out.println("unAssPnum="+ unAssPnum);
-		System.out.println("!!!!!!!!!!");
+		//System.out.println("!!!!!!!!!!");
 	}
 
 	
@@ -269,7 +292,10 @@ public class MarkovDecisionProcess {
 		MarkovDecisionProcess mpd = new MarkovDecisionProcess();
 		// mpd.readFileByLines("/home/wzhuo/example/mdp/zipf7.txt");
 		mpd.readFileByLines("D:/workspace/zipf7.txt");
-
+		//mpd.readFileByLines("D:/workspace/out1.txt");
+		
+		
+		
 	}
 
 }
